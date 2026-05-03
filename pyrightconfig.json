@@ -1,7 +1,9 @@
 {
-    "exclude": [
-        "data/**",
-        "data_local/**",
-        "outputs/**"
-    ]
+  "exclude": [
+    "data/**",
+    "data_local/**",
+    "outputs/**"
+  ],
+  "typeCheckingMode": "basic",
+  "reportPrivateImportUsage": "none"
 }

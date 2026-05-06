@@ -52,9 +52,12 @@ optimizer:
   weight_decay: 0.001
 past_action_visible: false
 policy:
-  _target_: diffusion_policy.policy.diffusion_transformer_lowdim_policy.DiffusionTransformerLowdimPolicy
+  _target_: diffusion_policy.policy.diffusion_wavelet_lowdim_policy.DiffusionWaveletLowdimPolicy
   action_dim: 9
   horizon: 16
+  aux_alpha: 0.1
+  aux_beta: 0.1
+  aux_smoothing_window: 3
   model:
     _target_: diffusion_policy.model.diffusion.wavelet_for_diffusion.WaveletForDiffusion
     input_dim: 9

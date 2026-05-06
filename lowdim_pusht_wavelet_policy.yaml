@@ -121,7 +121,7 @@ task:
   obs_dim: 20
 task_name: pusht_lowdim
 training:
-  checkpoint_every: 250
+  checkpoint_every: 100
   debug: false
   device: cuda:0
   gradient_accumulate_every: 1

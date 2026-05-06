@@ -111,11 +111,13 @@ class WaveletForDiffusion(ModuleAttrMixin):
             x = x + o_emb                               # broadcast add
 
         detail_streams = []
+        approx_streams = []
         s_s = x
 
         for analysis_block in self.analysis_blocks:
             s_d, s_s = analysis_block(s_s)
             detail_streams.append(s_d)
+            approx_streams.append(s_s)
         # s_s is deepest aprox
 
         a_s = self.converter_approx(s_s)
@@ -124,21 +126,18 @@ class WaveletForDiffusion(ModuleAttrMixin):
         # collect a_s tensors at each synthesis level for aux loss
         # a_s_per_level[0] is the deepest (A^L_s, before any synthesis)
         # a_s_per_level[i+1] is the result after synthesis_blocks[L-1-i]
-        a_s_per_level = [a_s]
 
         # synthesis cascade
         for i in reversed(range(self.n_levels)):
             a_s = self.synthesis_blocks[i](a_s, a_ds[i])
-            a_s_per_level.append(a_s)
         
         x = self.ln_f(a_s)
         x = self.head(x) # (B, T, output_dim)
 
-
         if return_aux:
             aux = {
-                'a_s_per_level': a_s_per_level,  # length L+1, coarsest to finest
-                'a_d_per_level': a_ds,            # length L, ordered by analysis level
+                'a_s_per_level': approx_streams,  # length L+1, coarsest to finest
+                'a_d_per_level': detail_streams,            # length L, ordered by analysis level
             }
             return x, aux
         return x

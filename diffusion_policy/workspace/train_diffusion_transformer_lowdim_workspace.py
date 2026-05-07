@@ -184,8 +184,8 @@ class TrainDiffusionTransformerLowdimWorkspace(BaseWorkspace):
                         train_losses.append(raw_loss_cpu)
                         step_log = {
                             'train_loss': raw_loss_cpu,
-                            'd_loss': d_loss,
-                            's_loss': s_loss,
+                            'd_loss': d_loss.item(),
+                            's_loss': s_loss.item(),
                             'global_step': self.global_step,
                             'epoch': self.epoch,
                             'lr': lr_scheduler.get_last_lr()[0]

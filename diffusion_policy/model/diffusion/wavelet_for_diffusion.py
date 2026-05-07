@@ -2,6 +2,7 @@ from typing import Union, Optional, Tuple
 import logging
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from diffusion_policy.model.diffusion.wavelet_components import (
     CausalDilatedConv1d, LiftingAnalysisBlock, Fuser, SynthesisBlock, causal_moving_average
 )
@@ -19,7 +20,7 @@ class WaveletForDiffusion(ModuleAttrMixin):
             n_obs_steps: int,
             cond_dim: int = 0,
             d_model=128,
-            n_levels=2,
+            n_levels=6,
             kernel_size=3,
             n_heads=4,
             ffn_mult=4,
@@ -111,13 +112,11 @@ class WaveletForDiffusion(ModuleAttrMixin):
             x = x + o_emb                               # broadcast add
 
         detail_streams = []
-        approx_streams = []
         s_s = x
 
         for analysis_block in self.analysis_blocks:
             s_d, s_s = analysis_block(s_s)
             detail_streams.append(s_d)
-            approx_streams.append(s_s)
         # s_s is deepest aprox
 
         a_s = self.converter_approx(s_s)
@@ -127,19 +126,32 @@ class WaveletForDiffusion(ModuleAttrMixin):
         # a_s_per_level[0] is the deepest (A^L_s, before any synthesis)
         # a_s_per_level[i+1] is the result after synthesis_blocks[L-1-i]
 
+        smoothes = [a_s]
+
         # synthesis cascade
         for i in reversed(range(self.n_levels)):
-            a_s = self.synthesis_blocks[i](a_s, a_ds[i])
+            # inverse U update to disentangle a_s from detailed
+            u_net = self.analysis_blocks[i].updater
+            even = a_s - u_net(a_ds[i])
+
+            # fuser
+            a_s = self.synthesis_blocks[i](even, a_ds[i])
+            smoothes.append(a_s)
         
         x = self.ln_f(a_s)
         x = self.head(x) # (B, T, output_dim)
 
+        d_loss = torch.mean(torch.stack([
+            F.smooth_l1_loss(a_d, torch.zeros_like(a_d)) for a_d in a_ds
+        ]))
+
+        s_loss = torch.mean(torch.stack([
+            F.smooth_l1_loss(s_prev, causal_moving_average(s_next, window=3))
+            for s_prev, s_next in zip(smoothes[:-1], smoothes[1:])
+        ]))
+
         if return_aux:
-            aux = {
-                'a_s_per_level': approx_streams,  # length L+1, coarsest to finest
-                'a_d_per_level': detail_streams,            # length L, ordered by analysis level
-            }
-            return x, aux
+            return x, d_loss, s_loss
         return x
 
     def _init_weights(self, module):

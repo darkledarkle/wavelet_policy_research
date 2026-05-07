@@ -224,7 +224,7 @@ class DiffusionWaveletLowdimPolicy(BaseLowdimPolicy):
         noisy_trajectory[condition_mask] = trajectory[condition_mask]
         
         # Predict the noise residsual
-        pred, aux = self.model(noisy_trajectory, timesteps, cond, return_aux=True)
+        pred, d_loss, s_loss = self.model(noisy_trajectory, timesteps, cond, return_aux=True)
 
         pred_type = self.noise_scheduler.config.prediction_type 
         if pred_type == 'epsilon':
@@ -239,21 +239,6 @@ class DiffusionWaveletLowdimPolicy(BaseLowdimPolicy):
         loss = reduce(loss, 'b ... -> b (...)', 'mean')
         loss = loss.mean()
 
-        # auxiliary losses
-        detail_loss = sum(
-            F.smooth_l1_loss(a_d, torch.zeros_like(a_d))
-            for a_d in aux['a_d_per_level']
-        )
-        
-        approx_loss = sum(
-            F.smooth_l1_loss(
-                causal_moving_average(aux['a_s_per_level'][l + 1], window=self.aux_smoothing_window),
-                aux['a_s_per_level'][l]
-            )
-            for l in range(len(aux['a_s_per_level']) - 1)
-        )
-
-        loss = loss + self.aux_alpha * approx_loss + self.aux_beta * detail_loss
-
+        loss = loss + self.aux_alpha * s_loss + self.aux_beta * d_loss
 
         return loss

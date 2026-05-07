@@ -69,11 +69,20 @@ class LiftingAnalysisBlock(nn.Module):
     def __init__(self,
                  d_model: int,
                  kernel_size: int = 3,
-                 dilation: int = 1):
+                 dilation: int = 1,
+                 n_inner_layers: int = 3,
+                 dropout: float = 0.1):
         super().__init__()
 
-        self.predictor = CausalDilatedConv1d(d_model, kernel_size, dilation) # P 
-        self.updater = CausalDilatedConv1d(d_model, kernel_size, dilation) # U
+        self.predictor = nn.Sequential(*[
+            CausalConvBlock(d_model, kernel_size, dilation, dropout)
+            for _ in range(n_inner_layers)
+        ]) # P
+
+        self.updater = nn.Sequential(*[
+            CausalConvBlock(d_model, kernel_size, dilation, dropout)
+            for _ in range(n_inner_layers)
+        ]) # U
     
 
     def forward(self, s_hat: torch.Tensor):
@@ -84,6 +93,22 @@ class LiftingAnalysisBlock(nn.Module):
 
         return s_d, s_s
 
+class CausalConvBlock(nn.Module):
+    """LayerNorm + CausalDilatedConv1d + Dropout, with residual connection."""
+    def __init__(self, d_model, kernel_size=3, dilation=1, dropout=0.1):
+        super().__init__()
+        self.ln = nn.LayerNorm(d_model)
+        self.conv = CausalDilatedConv1d(d_model, kernel_size, dilation)
+        self.dropout = nn.Dropout(dropout)
+    
+    def forward(self, x):
+        # x: (B, T, d_model), channels-last
+        residual = x
+        y = self.ln(x)
+        y = self.conv(y)
+        y = self.dropout(y)
+        return residual + y
+    
 
 class Fuser(nn.Module):
     """

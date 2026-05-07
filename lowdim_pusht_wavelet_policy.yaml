@@ -49,7 +49,7 @@ optimizer:
   - 0.9
   - 0.95
   learning_rate: 0.0001
-  weight_decay: 0.001
+  weight_decay: 0.1
 past_action_visible: false
 policy:
   _target_: diffusion_policy.policy.diffusion_wavelet_lowdim_policy.DiffusionWaveletLowdimPolicy

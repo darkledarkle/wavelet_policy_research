@@ -66,7 +66,7 @@ policy:
       n_obs_steps: 2
       cond_dim: 20
       d_model: 128
-      n_levels: 2
+      n_levels: 3
       kernel_size: 3
       n_heads: 4
       ffn_mult: 4

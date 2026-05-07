@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from diffusion_policy.model.diffusion.wavelet_components import (
-    CausalDilatedConv1d, LiftingAnalysisBlock, Fuser, SynthesisBlock, causal_moving_average
+    CausalDilatedConv1d, LiftingAnalysisBlock, Fuser, SynthesisBlock, CausalConvBlock, causal_moving_average
 )
 from diffusion_policy.model.diffusion.positional_embedding import SinusoidalPosEmb
 from diffusion_policy.model.common.module_attr_mixin import ModuleAttrMixin
@@ -169,7 +169,8 @@ class WaveletForDiffusion(ModuleAttrMixin):
             LiftingAnalysisBlock,
             Fuser,
             SynthesisBlock,
-            WaveletForDiffusion)
+            WaveletForDiffusion,
+            CausalConvBlock)
         if isinstance(module, (nn.Linear, nn.Embedding)):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
             if isinstance(module, nn.Linear) and module.bias is not None:

@@ -241,8 +241,4 @@ class DiffusionWaveletLowdimPolicy(BaseLowdimPolicy):
 
         loss = loss + self.aux_alpha * s_loss + self.aux_beta * d_loss
 
-        return {
-            "loss": loss,
-            "d_loss": d_loss,
-            "s_loss": s_loss
-            }
+        return loss, d_loss, s_loss
